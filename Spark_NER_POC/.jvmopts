@@ -1,0 +1,7 @@
+# .jvmopts
+
+# Increase the maximum heap size for the SBT process itself (4 GB)
+-Xmx4096m 
+
+# Increase the initial heap size (1 GB)
+-Xms1024m

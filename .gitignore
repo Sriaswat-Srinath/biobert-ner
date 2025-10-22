@@ -1,0 +1,46 @@
+ # Virtual environment
+
+venv/
+
+
+# Large data / model files (consider Git LFS or alternative storage)
+
+**/data/raw/
+
+**/final-biobert-ner-model/
+
+*.zip
+
+
+# Python cache/compiled files
+
+__pycache__/
+
+*.pyc
+
+
+# Scala build files
+
+target/
+
+project/target/
+
+.bloop/
+
+.metals/
+
+.bsp/
+
+
+# IDE files
+
+.idea/
+
+.vscode/
+
+
+# Secrets
+
+.env
+
+*.log

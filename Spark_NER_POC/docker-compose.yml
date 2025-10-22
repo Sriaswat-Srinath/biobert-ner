@@ -1,0 +1,83 @@
+version: '3.7'
+services:
+  # 1. KAFKA STACK
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.0
+    container_name: zookeeper
+    hostname: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:7.3.0
+    container_name: kafka
+    hostname: kafka
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      
+  # 2. HDFS STACK
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: namenode
+    hostname: namenode
+    restart: always
+    ports:
+      - "9870:9870"
+      - "8020:8020"
+    volumes:
+      - hadoop_namenode:/hadoop/dfs/name
+    environment:
+      - CLUSTER_NAME=test
+      - HDFS_CONF_fs_defaultFS=hdfs://namenode:8020
+
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: datanode
+    hostname: datanode
+    restart: always
+    depends_on:
+      - namenode
+    volumes:
+      - hadoop_datanode:/hadoop/dfs/data
+    environment:
+      - CLUSTER_NAME=test
+      - SERVICE_PRECONDITION=namenode:8020
+      - HDFS_CONF_fs_defaultFS=hdfs://namenode:8020
+      
+  # 3. SPARK PROCESSOR APPLICATION
+  spark-app:
+    # FIX 1: Corrected image syntax (removed redundant 'image: ')
+    image: apache/spark:3.5.1
+    container_name: spark-ner-processor
+    hostname: spark-app
+    depends_on:
+      - kafka
+      - namenode
+      
+    # CRITICAL FIX 2: Correctly defines persistent startup command
+    entrypoint: /bin/bash 
+    command: -c "while true; do sleep 30; done"
+
+    volumes:
+      # CRITICAL FIX 3: Correctly aligns volume list items
+      - E:/Semetser 5/Text Analytics/BioBertNERProject/Spark_NER_POC/target/scala-2.12/:/usr/local/spark-job
+    
+    environment:
+      - DICTIONARY_PATH=/tmp/biomed_terms.txt
+      
+volumes:
+  # CRITICAL FIX 4: Aligns top-level volume names with 'services:'
+  hadoop_namenode:
+  hadoop_datanode:

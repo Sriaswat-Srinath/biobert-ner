@@ -1,0 +1,65 @@
+version: '3.7'
+services:
+  # 1. KAFKA STACK
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.0
+    container_name: zookeeper
+    hostname: zookeeper  # FIX: Set explicit hostname
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:7.3.0
+    container_name: kafka
+    hostname: kafka # FIX: Set explicit hostname
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      # FIX: Advertise internal (29092) and external (9092) ports
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      
+  # 2. HDFS STACK
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: namenode
+    hostname: namenode # FIX: Set explicit hostname
+    restart: always
+    ports:
+      - "9870:9870" # HDFS Web UI port
+      - "8020:8020" # HDFS RPC port (Needed for DataNode/Spark to connect)
+    volumes:
+      - hadoop_namenode:/hadoop/dfs/name
+    environment:
+      - CLUSTER_NAME=test
+      # FIX: Define the default HDFS endpoint for other containers
+      - HDFS_CONF_fs_defaultFS=hdfs://namenode:8020 
+
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: datanode
+    hostname: datanode # FIX: Set explicit hostname
+    restart: always
+    depends_on:
+      - namenode
+    volumes:
+      - hadoop_datanode:/hadoop/dfs/data
+    environment:
+      - CLUSTER_NAME=test
+      # FIX: NameNode RPC port is 8020
+      - SERVICE_PRECONDITION=namenode:8020 
+      # FIX: Define the default HDFS endpoint for DataNode to find NameNode
+      - HDFS_CONF_fs_defaultFS=hdfs://namenode:8020 
+      
+volumes:
+  hadoop_namenode:
+  hadoop_datanode:
